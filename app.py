@@ -5,8 +5,7 @@ import pandas_ta as ta
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-import tensorflow as tf
-from tensorflow.keras.models import load_model
+import onnxruntime as ort
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
@@ -21,12 +20,12 @@ st.set_page_config(
 
 @st.cache_resource
 def load_artifacts():
-    model = load_model("stock_ann_model.keras")
+    sess = ort.InferenceSession("stock_ann_model.onnx")
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
     with open("feature_columns.pkl", "rb") as f:
         feature_columns = pickle.load(f)
-    return model, scaler, feature_columns
+    return sess, scaler, feature_columns
 
 model, scaler, feature_columns = load_artifacts()
 
@@ -96,8 +95,8 @@ def show_results(ticker, df, threshold, initial_capital, currency, line_color):
     """
 
     X        = df[feature_columns]
-    X_scaled = scaler.transform(X)
-    proba    = model.predict(X_scaled, verbose=0).flatten()
+    X_scaled = scaler.transform(X).astype(np.float32)
+    proba    = model.run(None, {"keras_tensor_9": X_scaled})[0].flatten()
     signals  = (proba > threshold).astype(int)
 
     latest_proba  = proba[-1]
