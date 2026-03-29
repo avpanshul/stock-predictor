@@ -1,9 +1,8 @@
-yfinance
-pandas
-pandas-ta
-scikit-learn
-tensorflow
-matplotlib
-streamlit
-jupyter
-ipykernel
+yfinance==1.2.0
+pandas==2.3.3
+pandas-ta==0.4.71b0
+scikit-learn==1.8.0
+tensorflow-cpu==2.21.0
+matplotlib==3.10.8
+streamlit==1.55.0
+numpy==2.2.6
