@@ -29,6 +29,8 @@ def load_artifacts():
 
 model, scaler, feature_columns = load_artifacts()
 
+import ta as ta_lib
+
 def compute_features(ticker, period_years=2):
     end   = datetime.today()
     start = end - timedelta(days=365 * period_years)
@@ -44,28 +46,53 @@ def compute_features(ticker, period_years=2):
     df.columns = [col[0] for col in df.columns]
     df.columns = ["close", "high", "low", "open", "volume"]
 
-    df["rsi"]          = ta.rsi(df["close"], length=14)
-    macd               = ta.macd(df["close"], fast=12, slow=26, signal=9)
-    df["macd"]         = macd["MACD_12_26_9"]
-    df["macd_signal"]  = macd["MACDs_12_26_9"]
-    df["ema9"]         = ta.ema(df["close"], length=9)
-    df["ema21"]        = ta.ema(df["close"], length=21)
-    df["ema_ratio"]    = df["ema9"] / df["ema21"]
-    bbands             = ta.bbands(df["close"], length=20, std=2)
-    df["bb_percent"]   = bbands["BBP_20_2.0_2.0"]
-    df["atr"]          = ta.atr(df["high"], df["low"], df["close"], length=14)
+    # RSI
+    df["rsi"] = ta_lib.momentum.RSIIndicator(df["close"], window=14).rsi()
+
+    # MACD
+    macd_ind = ta_lib.trend.MACD(df["close"], window_slow=26, window_fast=12, window_sign=9)
+    df["macd"]        = macd_ind.macd()
+    df["macd_signal"] = macd_ind.macd_signal()
+
+    # EMA
+    df["ema9"]     = ta_lib.trend.EMAIndicator(df["close"], window=9).ema_indicator()
+    df["ema21"]    = ta_lib.trend.EMAIndicator(df["close"], window=21).ema_indicator()
+    df["ema_ratio"] = df["ema9"] / df["ema21"]
+
+    # Bollinger Bands
+    bb = ta_lib.volatility.BollingerBands(df["close"], window=20, window_dev=2)
+    df["bb_percent"] = bb.bollinger_pband()
+
+    # ATR
+    df["atr"] = ta_lib.volatility.AverageTrueRange(
+        df["high"], df["low"], df["close"], window=14
+    ).average_true_range()
+
+    # Volume ratio
     df["volume_ratio"] = df["volume"] / df["volume"].rolling(10).mean()
-    stoch              = ta.stoch(df["high"], df["low"], df["close"])
-    df["stoch_k"]      = stoch["STOCHk_14_3_3"]
-    df["stoch_d"]      = stoch["STOCHd_14_3_3"]
-    df["roc"]          = ta.roc(df["close"], length=10)
-    df["willr"]        = ta.willr(df["high"], df["low"], df["close"], length=14)
-    df["return_1d"]    = df["close"].pct_change(1)
-    df["return_3d"]    = df["close"].pct_change(3)
-    df["return_5d"]    = df["close"].pct_change(5)
+
+    # Stochastic
+    stoch = ta_lib.momentum.StochasticOscillator(
+        df["high"], df["low"], df["close"], window=14, smooth_window=3
+    )
+    df["stoch_k"] = stoch.stoch()
+    df["stoch_d"] = stoch.stoch_signal()
+
+    # ROC
+    df["roc"] = ta_lib.momentum.ROCIndicator(df["close"], window=10).roc()
+
+    # Williams %R
+    df["willr"] = ta_lib.momentum.WilliamsRIndicator(
+        df["high"], df["low"], df["close"], lbp=14
+    ).williams_r()
+
+    # Returns
+    df["return_1d"] = df["close"].pct_change(1)
+    df["return_3d"] = df["close"].pct_change(3)
+    df["return_5d"] = df["close"].pct_change(5)
+
     df = df.dropna()
     return df
-
 
 def run_backtest(df, signals, initial_capital):
     bt = pd.DataFrame(index=df.index)
