@@ -3,6 +3,7 @@ pandas
 onnxruntime
 scikit-learn
 matplotlib
-streamlit
 numpy
 ta
+streamlit==1.32.0
+altair==4.2.2
